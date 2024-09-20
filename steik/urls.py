@@ -1,7 +1,7 @@
 from django.contrib import admin  # Importar o módulo admin do Django
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from core.views import PratoViewSet, MesaViewSet, PedidoViewSet
+from core.views import PratoViewSet, MesaViewSet, PedidoViewSet, PratoPedidoViewSet, NotificacaoViewSet
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -29,6 +29,8 @@ schema_view = get_schema_view(
 router = DefaultRouter()
 router.register(r"pratos", PratoViewSet)
 router.register(r"mesas", MesaViewSet)
+router.register(r"notificacao", NotificacaoViewSet)
+router.register(r"prato_pedido", PratoPedidoViewSet)
 router.register(r"pedidos", PedidoViewSet)
 
 urlpatterns = [
