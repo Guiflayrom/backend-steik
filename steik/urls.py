@@ -1,7 +1,15 @@
 from django.contrib import admin  # Importar o módulo admin do Django
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from core.views import PratoViewSet, MesaViewSet, PedidoViewSet, PratoPedidoViewSet, NotificacaoViewSet
+from core.views import (
+    PratoViewSet,
+    MesaViewSet,
+    PedidoViewSet,
+    PratoPedidoViewSet,
+    CategoriaViewSet,
+    NotificacaoViewSet,
+    RestauranteLoginView
+)
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -32,8 +40,11 @@ router.register(r"mesas", MesaViewSet)
 router.register(r"notificacao", NotificacaoViewSet)
 router.register(r"prato_pedido", PratoPedidoViewSet)
 router.register(r"pedidos", PedidoViewSet)
+router.register(r"categorias", CategoriaViewSet)
 
 urlpatterns = [
+    path('api/login/', RestauranteLoginView.as_view(), name='restaurante_login'),
+    path('grappelli/', include('grappelli.urls')),  # Grappelli URL
     path("admin/", admin.site.urls),  # Adiciona o Django Admin às URLs
     path("api/", include(router.urls)),
     path(

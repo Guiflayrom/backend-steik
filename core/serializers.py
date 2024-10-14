@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Prato, Mesa, Pedido, PratoPedido, Notificacao
+from .models import Prato, Mesa, Pedido, PratoPedido, Notificacao, Restaurante, Categoria
 import re
 
 
@@ -9,7 +9,18 @@ def extrair_numeros(string: str) -> int:
     return int(numero_concatenado)
 
 
+class RestauranteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Restaurante
+        fields = "__all__"
+
+
 class PratoSerializer(serializers.ModelSerializer):
+    # Para leitura (GET), usamos o nome da categoria
+    categoria_nome = serializers.StringRelatedField(source='categoria', read_only=True)
+    # Para escrita (POST, PUT, PATCH), aceitamos o ID da categoria
+    categoria = serializers.PrimaryKeyRelatedField(queryset=Categoria.objects.all())
+
     class Meta:
         model = Prato
         fields = "__all__"
@@ -20,6 +31,11 @@ class MesaSerializer(serializers.ModelSerializer):
         model = Mesa
         fields = "__all__"
 
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = "__all__"
 
 
 class NotificacaoSerializer(serializers.ModelSerializer):
@@ -37,20 +53,14 @@ class PratoPedidoSerializer(serializers.ModelSerializer):
         fields = ["nome", "quantidade", "prato"]
 
     def create(self, validated_data):
-        # Busca o prato pelo nome informado
         nome_prato = validated_data.pop("nome")
         prato = Prato.objects.get(nome=nome_prato)
-
-        # Cria o objeto PratoPedido
         prato_pedido = PratoPedido.objects.create(prato=prato, **validated_data)
-
         return prato_pedido
 
 
 class PedidoSerializer(serializers.ModelSerializer):
-    pratos_obj = PratoPedidoSerializer(
-        many=True, write_only=True
-    )  # Usa PratoPedidoSerializer para entrada
+    pratos_obj = PratoPedidoSerializer(many=True, write_only=True)
     total_pratos = serializers.SerializerMethodField()
     horario_pedido = serializers.SerializerMethodField()
 
@@ -63,7 +73,8 @@ class PedidoSerializer(serializers.ModelSerializer):
             "status",
             "pratos",
             "mesa",
-            "pratos_obj",  # Campo para receber os pratos do frontend
+            "pratos_obj",
+            'restaurante',
             "total_pratos",
         ]
 
@@ -74,29 +85,20 @@ class PedidoSerializer(serializers.ModelSerializer):
         return total
 
     def get_horario_pedido(self, obj):
-        return str(obj.horario_pedido.hour) + ":" + str(obj.horario_pedido.minute)
+        return f"{obj.horario_pedido.hour}:{obj.horario_pedido.minute}"
 
     def create(self, validated_data):
-        # Extrai os dados dos pratos enviados no JSON
+        print(validated_data)
         pratos_data = validated_data.pop("pratos_obj")
-
-        # Cria o pedido
         pedido = Pedido.objects.create(**validated_data)
-
-        # Adiciona os pratos ao pedido
         prato_pedidos = []
         for prato_data in pratos_data:
-            prato = Prato.objects.get(
-                nome=prato_data["nome"]
-            )  # Busca o prato pelo nome
+            prato = Prato.objects.get(nome=prato_data["nome"])
             prato_pedido = PratoPedido.objects.create(
                 prato=prato, quantidade=prato_data["quantidade"]
             )
             prato_pedidos.append(prato_pedido)
-
-        # Adiciona todos os PratoPedido ao Pedido usando o método add() para o relacionamento ManyToMany
         pedido.pratos.add(*prato_pedidos)
-
         return pedido
 
     def to_representation(self, instance):
