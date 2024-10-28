@@ -14,11 +14,23 @@ djangorestframework = "^3.15.2"
 djangorestframework-simplejwt = "^5.3.1"
 drf-yasg = "^1.21.7"
 django-grappelli = "^4.0.1"
+openpyxl = "^3.1.5"
 
+[tool.taskipy.tasks]
+lint = "flake8 ."
+test = "pytest tests/"
+format = "black . --line-length 90 && isort ."
+start = "python manage.py runserver"
+run = "python manage.py runserver"
+mm = "python manage.py makemigrations"
+m = "python manage.py migrate"
+fm = "python manage.py makemigrations && python manage.py migrate"
+fr = "black . --line-length 90 && isort . && python manage.py runserver"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
 isort = "^5.13.2"
+taskipy = "^1.14.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -10,9 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
-from pathlib import Path
 from datetime import timedelta
 from os import path
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,6 +26,8 @@ SECRET_KEY = "django-insecure-9^h&83*393ip=wp$rjtbng6=^)so57q!d5hw4#-dsi**l#e8hc
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+AUTH_USER_MODEL = "core.User"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -41,19 +43,18 @@ REST_FRAMEWORK = {
 # Configuração do Simple JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_BLACKLIST_ENABLED": True,
 }
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'grappelli',  # Deve vir primeiro
+    "grappelli",  # Deve vir primeiro
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -100,7 +101,7 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
-                'django.template.context_processors.request',
+                "django.template.context_processors.request",
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
@@ -158,9 +159,9 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"
 
-STATIC_ROOT = path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = path.join(BASE_DIR, "staticfiles")
 
 
 # Default primary key field type
