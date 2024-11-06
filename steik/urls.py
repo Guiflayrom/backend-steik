@@ -7,15 +7,15 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (TokenObtainPairView,
                                             TokenRefreshView, TokenVerifyView)
 
-from core.views import (AcrescimoViewSet, CaixaAbertoView, CaixaViewSet,
-                        CategoriaViewSet, DeliveryManagementViewSet,
-                        DeliveryViewSet, DespesaViewSet,
-                        ExportarTransacoesExcelView, LogoutView, MesaViewSet,
-                        MetodoPagamentoViewSet, NotificacaoViewSet,
-                        PedidoAtualMesaView, PedidoViewSet, PessoaViewSet,
-                        PratoPedidoViewSet, PratoViewSet, RestauranteLoginView,
-                        RestauranteViewSet, ResumoVendasView,
-                        UsuarioDetalhesView)
+from core.views import (AcrescimoViewSet, BlingOAuthCallbackView,
+                        CaixaAbertoView, CaixaViewSet, CategoriaViewSet,
+                        DeliveryManagementViewSet, DeliveryViewSet,
+                        DespesaViewSet, ExportarTransacoesExcelView,
+                        LogoutView, MesaViewSet, MetodoPagamentoViewSet,
+                        NotificacaoViewSet, PedidoAtualMesaView, PedidoViewSet,
+                        PessoaViewSet, PratoPedidoViewSet, PratoViewSet,
+                        RestauranteLoginView, RestauranteViewSet,
+                        ResumoVendasView, UsuarioDetalhesView, aaa)
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -52,6 +52,8 @@ router.register(r"metodos_pagamento", MetodoPagamentoViewSet)
 router.register(r"deliveries", DeliveryViewSet)
 
 urlpatterns = [
+    path("bling/callback/", BlingOAuthCallbackView.as_view(), name="bling_callback"),
+    path("bling/", aaa.as_view(), name="bling_callsback"),
     path("api/v1/", include(router.urls)),
     path(
         "api/v1/usuarios/detalhes/",

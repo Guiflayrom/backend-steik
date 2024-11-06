@@ -1,11 +1,16 @@
+import base64
 import locale
+from typing import List
 
 import openpyxl
+import requests
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.db.models import F, FloatField, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from openpyxl.utils import get_column_letter
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -13,9 +18,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import (Acrescimo, Caixa, Categoria, Delivery, Despesa,
-                     Funcionario, Mesa, MetodoPagamento, Notificacao, Pedido,
-                     Pessoa, Prato, PratoPedido, Restaurante, User)
+from .models import (Acrescimo, AuthenticationToken, Caixa, Categoria,
+                     Delivery, Despesa, Funcionario, Mesa, MetodoPagamento,
+                     Notificacao, Pedido, Pessoa, Prato, PratoPedido,
+                     Restaurante, User)
 from .serializers import (AcrescimoSerializer, CaixaSerializer,
                           CategoriaSerializer, DeliverySerializer,
                           DespesaSerializer, MesaSerializer,
@@ -25,6 +31,174 @@ from .serializers import (AcrescimoSerializer, CaixaSerializer,
                           RestauranteSerializer)
 
 locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
+
+AUTH_STATE = {}
+
+
+class PedidoWhatsApp(APIView):
+    @staticmethod
+    def post(self, request): ...
+
+
+class Item:
+    def __init__(
+        self, codigo: str, descricao: str, unidade: str, quantidade: float, valor: float
+    ):
+        self.codigo = codigo
+        self.descricao = descricao
+        self.unidade = unidade
+        self.quantidade = quantidade
+        self.valor = valor
+
+
+class BlingNFCeService:
+    @staticmethod
+    def enviar_nfce(itens: List[Item]):
+        access_token = BlingTokenService.get_access_token()
+        if not access_token:
+            return {"error": "Não foi possível autenticar com a API Bling"}
+
+        # Estrutura de dados para NFC-e
+        nfce_data = {
+            "tipo": 1,  # Tipo de nota fiscal
+            "dataOperacao": "2023-01-12 09:52:12",  # Data da operação (você pode ajustar conforme necessário)
+            "contato": {
+                "nome": "Consumidor final",
+                "tipoPessoa": "F",
+            },
+            "naturezaOperacao": {
+                "id": 12345678  # ID da operação, altere conforme sua configuração no Bling
+            },
+            "itens": [
+                {
+                    "codigo": item.codigo,
+                    "descricao": item.descricao,
+                    "unidade": item.unidade,
+                    "quantidade": item.quantidade,
+                    "valor": item.valor,
+                    "tipo": "P",  # Tipo de produto
+                    "origem": 0,
+                }
+                for item in itens
+            ],
+            "finalidade": 1,  # Finalidade da emissão
+            "observacoes": "Nota fiscal de venda ao consumidor final.",
+        }
+
+        url = "https://api.bling.com.br/Api/v3/nfce"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        }
+
+        # Envia a NFC-e como JSON
+        response = requests.post(url, json=nfce_data, headers=headers)
+
+        # Verifica se a resposta foi bem-sucedida e retorna a resposta
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": response.text}
+
+
+class aaa(APIView):
+    def get(self, request):
+        itens = [
+            Item("001", "Produto Teste 1", "UN", 2, 10.0),
+            Item("002", "Produto Teste 2", "UN", 1, 20.0),
+        ]
+        resposta = BlingNFCeService.enviar_nfce(itens)
+
+        return Response(resposta)
+
+
+class BlingTokenService:
+    @staticmethod
+    def get_access_token():
+        # Tenta obter um token válido do banco de dados
+        token = AuthenticationToken.get_valid_access_token()
+        if token:
+            return token
+
+        # Se não houver token válido, tenta usar o refresh_token para obter um novo access_token
+        refresh_token = BlingTokenService.get_refresh_token()
+        if refresh_token:
+            return BlingTokenService.refresh_access_token(refresh_token)
+
+        return None
+
+    @staticmethod
+    def store_tokens(access_token, refresh_token, expires_in):
+        # Salva ou atualiza o token de autenticação no banco de dados
+        AuthenticationToken.objects.create(
+            access_token=access_token, refresh_token=refresh_token, expires_in=expires_in
+        )
+
+    @staticmethod
+    def get_refresh_token():
+        # Tenta obter o refresh_token mais recente do banco de dados
+        token = (
+            AuthenticationToken.objects.filter(expires_at__gt=timezone.now())
+            .order_by("-expires_at")
+            .first()
+        )
+        return token.refresh_token if token else None
+
+    @staticmethod
+    def refresh_access_token(refresh_token):
+        token_url = "https://bling.com.br/Api/v3/oauth/token"
+        auth_string = f"{settings.BLING_CLIENT_ID}:{settings.BLING_CLIENT_SECRET}"
+        auth_base64 = base64.b64encode(auth_string.encode()).decode()
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "1.0",
+            "Authorization": f"Basic {auth_base64}",
+        }
+        data = {"grant_type": "refresh_token", "refresh_token": refresh_token}
+
+        response = requests.post(token_url, data=data, headers=headers)
+        if response.status_code == 200:
+            tokens = response.json()
+            # Salva o novo access_token e refresh_token no banco de dados
+            BlingTokenService.store_tokens(
+                tokens["access_token"], tokens["refresh_token"], tokens["expires_in"]
+            )
+            return tokens["access_token"]
+        return None
+
+
+class BlingOAuthCallbackView(APIView):
+    def get(self, request):
+        code = request.GET.get("code")
+
+        if not code:
+            return Response(
+                {"error": "Code não fornecido"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        token_url = "https://bling.com.br/Api/v3/oauth/token"
+        auth_string = f"{settings.BLING_CLIENT_ID}:{settings.BLING_CLIENT_SECRET}"
+        auth_base64 = base64.b64encode(auth_string.encode()).decode()
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "1.0",
+            "Authorization": f"Basic {auth_base64}",
+        }
+        data = {"grant_type": "authorization_code", "code": code}
+
+        response = requests.post(token_url, data=data, headers=headers)
+
+        if response.status_code == 200:
+            tokens = response.json()
+            BlingTokenService.store_tokens(
+                tokens["access_token"], tokens["refresh_token"], tokens["expires_in"]
+            )
+            return Response(tokens, status=status.HTTP_200_OK)
+        elif response.status_code == 429:
+            return Response(status=status.HTTP_429_TOO_MANY_REQUESTS)
+        return Response(response.json(), status=status.HTTP_400_BAD_REQUEST)
 
 
 class DeliveryManagementViewSet(viewsets.ModelViewSet):
@@ -160,7 +334,13 @@ class ExportarTransacoesExcelView(APIView):
             ]
         )
         pedidos = Pedido.objects.filter(caixa=caixa)
+        subtotal = 0
         for pedido in pedidos:
+            if pedido.status == "Em Confirmacao":
+                continue
+            for ordem in pedido.pratos.all():
+                subtotal += ordem.prato.valor
+
             pedidos_ws.append(
                 [
                     str(pedido.id),
@@ -168,7 +348,7 @@ class ExportarTransacoesExcelView(APIView):
                     pedido.valor_pago or 0,
                     pedido.desconto or 0,
                     pedido.troco or 0,
-                    pedido.subtotal or 0,
+                    pedido.subtotal or pedido.valor_pago or subtotal,
                     pedido.status,
                     pedido.horario_pedido.strftime("%Y-%m-%d %H:%M:%S"),
                 ]

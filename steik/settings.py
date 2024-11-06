@@ -68,6 +68,15 @@ INSTALLED_APPS = [
     "core",
 ]
 
+BLING_CLIENT_ID = "9fddac1a039fe33b62edacec1d930ed833cef9bc"
+BLING_CLIENT_SECRET = "3b7ea79b51e0eb05db6e801aab074f79ed060684b8857e1efd1fdec571c1"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",

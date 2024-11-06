@@ -114,8 +114,12 @@ class PedidoSerializer(serializers.ModelSerializer):
         many=True, read_only=True, source="pagamentos"
     )  # Read-only field para exibir pagamentos
 
-    restaurante = serializers.PrimaryKeyRelatedField(queryset=Restaurante.objects.all(), required=False)
-    caixa = serializers.PrimaryKeyRelatedField(queryset=Caixa.objects.all(), required=False)  # Caixa agora é realmente opcional
+    restaurante = serializers.PrimaryKeyRelatedField(
+        queryset=Restaurante.objects.all(), required=False
+    )
+    caixa = serializers.PrimaryKeyRelatedField(
+        queryset=Caixa.objects.all(), required=False
+    )  # Caixa agora é realmente opcional
 
     class Meta:
         model = Pedido
@@ -131,13 +135,15 @@ class PedidoSerializer(serializers.ModelSerializer):
             "desconto",
             "codigo",
             "troco",
+            "data_pedido",
+            "taxa_entrega",
             "subtotal",
             "is_delivery",
             "taxa_entrega",
             "total_pratos",
             "pagamentos",
             "pagamentos_detail",  # Campo para exibir detalhes de pagamentos
-            "restaurante"  # Novo campo para identificar o restaurante
+            "restaurante",  # Novo campo para identificar o restaurante
         ]
 
     def get_total_pratos(self, obj):
@@ -160,13 +166,19 @@ class PedidoSerializer(serializers.ModelSerializer):
 
         # Verifica se ambos os campos `caixa` e `restaurante` estão ausentes
         if not caixa and not restaurante:
-            raise serializers.ValidationError("É necessário fornecer o caixa ou o restaurante para identificar o pedido.")
+            raise serializers.ValidationError(
+                "É necessário fornecer o caixa ou o restaurante para identificar o pedido."
+            )
 
         # Se o restaurante for fornecido mas o caixa não, tenta identificar o caixa aberto do restaurante
         if not caixa and restaurante:
-            caixa_aberto = Caixa.objects.filter(restaurante=restaurante, fechado_em__isnull=True).first()
+            caixa_aberto = Caixa.objects.filter(
+                restaurante=restaurante, fechado_em__isnull=True
+            ).first()
             if not caixa_aberto:
-                raise serializers.ValidationError("Nenhum caixa aberto foi encontrado para o restaurante fornecido.")
+                raise serializers.ValidationError(
+                    "Nenhum caixa aberto foi encontrado para o restaurante fornecido."
+                )
             caixa = caixa_aberto
 
         # Atualização ou criação da Pessoa, se fornecida

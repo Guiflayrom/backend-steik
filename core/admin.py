@@ -57,6 +57,7 @@ class PedidoAdmin(admin.ModelAdmin):
         "get_nome_funcionario",
         "status",
         "mesa",
+        "codigo",
         "horario_pedido",
         "get_restaurante",
     )

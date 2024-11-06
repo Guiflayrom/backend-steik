@@ -1,10 +1,12 @@
 import string
+from datetime import timedelta
 from random import choices
 from uuid import uuid4
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 def gerar_codigo():
@@ -237,6 +239,33 @@ class MetodoPagamento(models.Model):
         return self.metodo + " " + str(self.valor)
 
 
+class AuthenticationToken(models.Model):
+    access_token = models.CharField(max_length=255)
+    expires_in = models.IntegerField()
+    token_type = models.CharField(max_length=50, default="Bearer")
+    scope = models.CharField(max_length=255, blank=True)
+    refresh_token = models.CharField(max_length=255)
+    expires_at = models.DateTimeField(editable=False)  # Calculado automaticamente
+
+    def save(self, *args, **kwargs):
+        # Calcula a data de expiração ao salvar, com base em expires_in
+        self.expires_at = timezone.now() + timedelta(seconds=self.expires_in)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_valid_access_token(cls):
+        # Verifica se existe algum token válido (não expirado) no banco
+        token = (
+            cls.objects.filter(expires_at__gt=timezone.now())
+            .order_by("-expires_at")
+            .first()
+        )
+        return token.access_token if token else None
+
+    def __str__(self):
+        return f"Token {self.access_token} expira em {self.expires_at}"
+
+
 class Pedido(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     caixa = models.ForeignKey("Caixa", on_delete=models.PROTECT, related_name="pedidos")
@@ -252,6 +281,7 @@ class Pedido(models.Model):
     status = models.CharField(
         max_length=255,
         choices=[
+            ("Em Confirmacao", "Em Confirmacao"),
             ("Em Aberto", "Em Aberto"),
             ("Preparando", "Preparando"),
             ("Pedido Pronto", "Pedido Pronto"),
@@ -268,6 +298,7 @@ class Pedido(models.Model):
         blank=True,
     )
     horario_pedido = models.DateTimeField(auto_now_add=True)
+    data_pedido = models.DateField(auto_now_add=True, blank=True, null=True)
     codigo = models.CharField(max_length=6, null=True, blank=True, unique=True)
 
     def save(self, *args, **kwargs):
@@ -286,8 +317,8 @@ class Pedido(models.Model):
                     mesa=self.mesa, valor_pago__isnull=True
                 ).exclude(id=self.id)
 
-                if pedidos_abertos.exists():
-                    raise ValidationError("Já existe um pedido em aberto para essa mesa.")
+                # if pedidos_abertos.exists():
+                # raise ValidationError("Já existe um pedido em aberto para essa mesa.")
 
                 # Define a mesa como Ocupada se o valor_pago estiver vazio
                 self.mesa.status = Mesa.OCUPADA
