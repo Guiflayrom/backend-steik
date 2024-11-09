@@ -1,5 +1,4 @@
 import base64
-import locale
 from typing import List
 
 import openpyxl
@@ -24,20 +23,18 @@ from .models import (Acrescimo, AuthenticationToken, Caixa, Categoria,
                      Restaurante, User)
 from .serializers import (AcrescimoSerializer, CaixaSerializer,
                           CategoriaSerializer, DeliverySerializer,
-                          DespesaSerializer, MesaSerializer,
-                          MetodoPagamentoSerializer, NotificacaoSerializer,
-                          PedidoSerializer, PessoaSerializer,
-                          PratoPedidoSerializer, PratoSerializer,
-                          RestauranteSerializer)
-
-locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
+                          DespesaSerializer, MesaEPedidosSerializer,
+                          MesaSerializer, MetodoPagamentoSerializer,
+                          NotificacaoSerializer, PedidoSerializer,
+                          PessoaSerializer, PratoPedidoSerializer,
+                          PratoSerializer, RestauranteSerializer)
 
 AUTH_STATE = {}
 
 
-class PedidoWhatsApp(APIView):
-    @staticmethod
-    def post(self, request): ...
+# class PedidoWhatsApp(APIView):
+#     @staticmethod
+#     def post(self, request): ...
 
 
 class Item:
@@ -438,10 +435,10 @@ class ResumoVendasView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Calcula o total faturado (considerando descontos)
-        total_faturado = Pedido.objects.filter(caixa=caixa).aggregate(
+        # Calcula o total faturado (considerando o valor dos métodos de pagamento)
+        total_faturado = MetodoPagamento.objects.filter(pedidos__caixa=caixa).aggregate(
             total=Coalesce(
-                Sum(F("valor_pago"), output_field=FloatField()),
+                Sum(F("valor"), output_field=FloatField()),
                 Value(0, output_field=FloatField()),
             )
         )["total"]
@@ -461,9 +458,7 @@ class ResumoVendasView(APIView):
 
         # Formata os métodos de pagamento com valores em BRL
         pagamentos_formatados = {
-            pagamento["metodo"]
-            .replace("_", " ")
-            .title(): locale.currency(pagamento["total"], grouping=True)
+            pagamento["metodo"].replace("_", " ").title(): "R$" + pagamento["total"]
             for pagamento in pagamentos_por_metodo
         }
 
@@ -488,7 +483,7 @@ class ResumoVendasView(APIView):
             .order_by("-total")
         )
         ranking_despesas_formatado = {
-            despesa["categoria"].title(): locale.currency(despesa["total"], grouping=True)
+            despesa["categoria"].title(): "R$" + despesa["total"]
             for despesa in ranking_despesas
         }
 
@@ -513,9 +508,7 @@ class ResumoVendasView(APIView):
             .order_by("-total")
         )
         ranking_acrescimos_formatado = {
-            acrescimo["categoria"].title(): locale.currency(
-                acrescimo["total"], grouping=True
-            )
+            acrescimo["categoria"].title(): "R$" + acrescimo["total"]
             for acrescimo in ranking_acrescimos
         }
 
@@ -527,13 +520,13 @@ class ResumoVendasView(APIView):
 
         # Monta o dicionário de resposta com valores formatados
         response_data = {
-            "total_faturado": locale.currency(total_faturado, grouping=True),
+            "total_faturado": "R$" + total_faturado,
             "pagamentos_por_metodo": pagamentos_formatados,
-            "total_despesas": locale.currency(total_despesas, grouping=True),
+            "total_despesas": "R$" + total_despesas,
             "ranking_despesas": ranking_despesas_formatado,
-            "total_acrescimos": locale.currency(total_acrescimos, grouping=True),
+            "total_acrescimos": "R$" + total_acrescimos,
             "ranking_acrescimos": ranking_acrescimos_formatado,
-            "total_em_caixa": locale.currency(total_em_caixa, grouping=True),
+            "total_em_caixa": "R$" + total_em_caixa,
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -718,6 +711,12 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 class MesaViewSet(viewsets.ModelViewSet):
     queryset = Mesa.objects.all()
     serializer_class = MesaSerializer
+
+    @action(detail=True, methods=["get"])
+    def details(self, request, pk=None):
+        mesa = self.get_object()
+        serializer = MesaEPedidosSerializer(mesa)
+        return Response(serializer.data)
 
 
 class PratoViewSet(viewsets.ModelViewSet):

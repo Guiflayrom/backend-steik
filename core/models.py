@@ -127,7 +127,7 @@ class Caixa(models.Model):
 
 class Despesa(models.Model):
     caixa = models.ForeignKey(Caixa, on_delete=models.PROTECT, related_name="despesas")
-    valor = models.IntegerField()
+    valor = models.FloatField()
     descricao = models.CharField(max_length=255)
     categoria = models.CharField(
         max_length=255,
@@ -154,7 +154,7 @@ class Despesa(models.Model):
 
 class Acrescimo(models.Model):
     caixa = models.ForeignKey(Caixa, on_delete=models.PROTECT, related_name="acrescimos")
-    valor = models.IntegerField()
+    valor = models.FloatField()
     descricao = models.CharField(max_length=255)
     categoria = models.CharField(
         max_length=255,
@@ -198,7 +198,7 @@ class Prato(models.Model):
     alergenicos = models.CharField(max_length=255, blank=True, null=True)
     ingredientes = models.CharField(max_length=500, blank=True, null=True)
 
-    valor = models.IntegerField(null=False)
+    valor = models.FloatField(null=False)
     tipo = models.CharField(
         max_length=100,
         choices=(("quente", "quente"), ("frio", "frio")),
@@ -222,7 +222,7 @@ class PratoPedido(models.Model):
 
 
 class MetodoPagamento(models.Model):
-    valor = models.IntegerField()
+    valor = models.FloatField()
     metodo = models.CharField(
         max_length=255,
         choices=(
@@ -270,12 +270,13 @@ class Pedido(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     caixa = models.ForeignKey("Caixa", on_delete=models.PROTECT, related_name="pedidos")
     pessoa = models.ForeignKey("Pessoa", on_delete=models.PROTECT, null=True, blank=True)
-    taxa_entrega = models.IntegerField(null=True, blank=True)
+    taxa_entrega = models.FloatField(null=True, blank=True)
     pratos = models.ManyToManyField("PratoPedido", related_name="pedidos")
-    valor_pago = models.FloatField(null=True, blank=True)
+    valor_pago = models.FloatField(default=0, null=True)
     desconto = models.FloatField(null=True, blank=True)
     troco = models.FloatField(null=True, blank=True)
     subtotal = models.FloatField(null=True, blank=True)
+    observacao = models.CharField(max_length=255, default="")
     mesa = models.ForeignKey(Mesa, on_delete=models.PROTECT, null=True, blank=True)
     is_delivery = models.BooleanField(default=False)
     status = models.CharField(
@@ -313,9 +314,9 @@ class Pedido(models.Model):
         if self.mesa is not None:  # Ignora a lógica se a mesa for None
             if self.valor_pago is None:  # Verifica se o valor_pago está vazio
                 # Verifica se já existe um pedido sem valor_pago para a mesma mesa
-                pedidos_abertos = Pedido.objects.filter(
-                    mesa=self.mesa, valor_pago__isnull=True
-                ).exclude(id=self.id)
+                # pedidos_abertos = Pedido.objects.filter(
+                #     mesa=self.mesa, valor_pago__isnull=True
+                # ).exclude(id=self.id)
 
                 # if pedidos_abertos.exists():
                 # raise ValidationError("Já existe um pedido em aberto para essa mesa.")

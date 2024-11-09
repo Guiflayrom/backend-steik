@@ -73,6 +73,8 @@ class PratoPedidoSerializer(serializers.ModelSerializer):
 
 
 class CaixaSerializer(serializers.ModelSerializer):
+    # operador = serializers.CharField(source='operador.funcionario.nome', read_only=True)
+
     class Meta:
         model = Caixa
         fields = "__all__"
@@ -139,6 +141,7 @@ class PedidoSerializer(serializers.ModelSerializer):
             "taxa_entrega",
             "subtotal",
             "is_delivery",
+            "observacao",
             "taxa_entrega",
             "total_pratos",
             "pagamentos",
@@ -189,6 +192,7 @@ class PedidoSerializer(serializers.ModelSerializer):
             )
 
         # Criação do Pedido com a pessoa associada, se fornecida
+        print(validated_data)
         pedido = Pedido.objects.create(pessoa=pessoa, caixa=caixa, **validated_data)
 
         # Criação dos PratoPedidos e adição ao Pedido
@@ -216,3 +220,20 @@ class PedidoSerializer(serializers.ModelSerializer):
             instance.pratos.all(), many=True
         ).data
         return representation
+
+
+class SimplePedidoSerializer(serializers.ModelSerializer):
+    data_pedido = serializers.DateField(format="%d/%m/%Y")
+    horario_pedido = serializers.DateTimeField(format="%H:%M:%S")
+
+    class Meta:
+        model = Pedido
+        fields = ["codigo", "data_pedido", "horario_pedido", "status"]
+
+
+class MesaEPedidosSerializer(serializers.ModelSerializer):
+    pedidos = SimplePedidoSerializer(many=True, read_only=True, source="pedido_set")
+
+    class Meta:
+        model = Mesa
+        fields = "__all__"
