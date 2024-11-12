@@ -27,7 +27,8 @@ from .serializers import (AcrescimoSerializer, CaixaSerializer,
                           MesaSerializer, MetodoPagamentoSerializer,
                           NotificacaoSerializer, PedidoSerializer,
                           PessoaSerializer, PratoPedidoSerializer,
-                          PratoSerializer, RestauranteSerializer)
+                          PratoSerializer, PratoSimpleSerializer,
+                          RestauranteSerializer)
 
 AUTH_STATE = {}
 
@@ -726,7 +727,7 @@ class PratoViewSet(viewsets.ModelViewSet):
         restaurante_id = self.kwargs.get(
             "restaurante_id"
         )  # Obtém o ID do restaurante da URL
-        return Prato.objects.filter(restaurante=restaurante_id)
+        return Prato.objects.filter(restaurante=restaurante_id, mostrar_cardapio=True)
 
 
 class PessoaViewSet(viewsets.ModelViewSet):
@@ -750,6 +751,11 @@ class PratoPedidoViewSet(viewsets.ModelViewSet):
 class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
+
+
+class PratoSimpleViewSet(viewsets.ModelViewSet):
+    queryset = Prato.objects.all()
+    serializer_class = PratoSimpleSerializer
 
 
 class CaixaViewSet(viewsets.ModelViewSet):

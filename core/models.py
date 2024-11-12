@@ -185,11 +185,11 @@ class Prato(models.Model):
         Restaurante, on_delete=models.PROTECT, related_name="pratos"
     )
     imagem = models.URLField(blank=True, null=True)
-    numero_prato = models.IntegerField()
+    numero_prato = models.IntegerField(null=True, blank=True)
     nome = models.CharField(max_length=255)
-    descricao = models.TextField()
+    descricao = models.TextField(null=True, blank=True)
     categoria = models.ForeignKey(
-        Categoria, on_delete=models.CASCADE, related_name="pratos"
+        Categoria, on_delete=models.CASCADE, related_name="pratos", null=True, blank=True
     )
     calorias = models.FloatField(null=True, blank=True)
     proteinas = models.FloatField(null=True, blank=True)
@@ -197,6 +197,8 @@ class Prato(models.Model):
     gorduras = models.FloatField(null=True, blank=True)
     alergenicos = models.CharField(max_length=255, blank=True, null=True)
     ingredientes = models.CharField(max_length=500, blank=True, null=True)
+
+    mostrar_cardapio = models.BooleanField(default=True)
 
     valor = models.FloatField(null=False)
     tipo = models.CharField(
@@ -276,7 +278,7 @@ class Pedido(models.Model):
     desconto = models.FloatField(null=True, blank=True)
     troco = models.FloatField(null=True, blank=True)
     subtotal = models.FloatField(null=True, blank=True)
-    observacao = models.CharField(max_length=255, default="")
+    observacao = models.CharField(max_length=255, default="", null=True, blank=True)
     mesa = models.ForeignKey(Mesa, on_delete=models.PROTECT, null=True, blank=True)
     is_delivery = models.BooleanField(default=False)
     status = models.CharField(

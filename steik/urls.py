@@ -13,8 +13,8 @@ from core.views import (AcrescimoViewSet, BlingOAuthCallbackView,
                         DespesaViewSet, ExportarTransacoesExcelView,
                         LogoutView, MesaViewSet, MetodoPagamentoViewSet,
                         NotificacaoViewSet, PedidoAtualMesaView, PedidoViewSet,
-                        PessoaViewSet, PratoPedidoViewSet, PratoViewSet,
-                        RestauranteLoginView, RestauranteViewSet,
+                        PessoaViewSet, PratoPedidoViewSet, PratoSimpleViewSet,
+                        PratoViewSet, RestauranteLoginView, RestauranteViewSet,
                         ResumoVendasView, UsuarioDetalhesView, aaa)
 
 schema_view = get_schema_view(
@@ -50,6 +50,7 @@ router.register(r"caixas", CaixaViewSet)
 router.register(r"despesas", DespesaViewSet)
 router.register(r"metodos_pagamento", MetodoPagamentoViewSet)
 router.register(r"deliveries", DeliveryViewSet)
+router.register(r"pratos", PratoSimpleViewSet, basename="pratos")
 
 urlpatterns = [
     path("bling/callback/", BlingOAuthCallbackView.as_view(), name="bling_callback"),

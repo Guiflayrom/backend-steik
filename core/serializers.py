@@ -23,6 +23,12 @@ class MesaSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class PratoSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prato
+        fields = "__all__"
+
+
 class PratoSerializer(serializers.ModelSerializer):
     categoria_nome = serializers.StringRelatedField(source="categoria", read_only=True)
     categoria = serializers.PrimaryKeyRelatedField(queryset=Categoria.objects.all())
@@ -54,7 +60,9 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 class PratoPedidoSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()  # Accepts ID for creation
     qtd = serializers.IntegerField(source="quantidade")
+    nome = serializers.CharField(write_only=True)
     prato = PratoSerializer(read_only=True)  # Campo aninhado para todos os dados do prato
+    valor = serializers.FloatField(write_only=True)
 
     class Meta:
         model = PratoPedido
@@ -62,6 +70,8 @@ class PratoPedidoSerializer(serializers.ModelSerializer):
             "id",
             "qtd",
             "prato",
+            'nome',
+            'valor',
         ]  # Inclui o campo "prato" com todos os dados do prato
 
     def create(self, validated_data):
@@ -192,17 +202,18 @@ class PedidoSerializer(serializers.ModelSerializer):
             )
 
         # Criação do Pedido com a pessoa associada, se fornecida
-        print(validated_data)
         pedido = Pedido.objects.create(pessoa=pessoa, caixa=caixa, **validated_data)
 
         # Criação dos PratoPedidos e adição ao Pedido
+
         prato_pedidos = [
             PratoPedido.objects.create(
-                prato=Prato.objects.get(id=item_data["id"]),
+                prato=Prato.objects.get_or_create(restaurante=caixa.restaurante, nome=item_data['nome'], valor=item_data['valor'], mostrar_cardapio=False)[0],
                 quantidade=item_data["quantidade"],
             )
             for item_data in items_data
         ]
+
         pedido.pratos.add(*prato_pedidos)
 
         # Criação dos Métodos de Pagamento e adição ao Pedido
